@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Подписки">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<title>Мои подписки</title>
+<style>
+/* Layout idea: dark Liquid Glass phone app. Colored glow of the next charge behind a big hero, a week strip, a glass month card, grouped list; floating glass tab bar at the bottom. Single dark visual world. */
+:root{
+  --bg:#000000;
+  --ink:#FFFFFF;
+  --muted:rgba(255,255,255,.55);
+  --faint:rgba(255,255,255,.12);
+  --today:#F2622E;
+  --glow:#1DB954;
+  --display:-apple-system,"SF Pro Display",BlinkMacSystemFont,system-ui,sans-serif;
+  --body:-apple-system,"SF Pro Text",BlinkMacSystemFont,system-ui,sans-serif;
+  --round:ui-rounded,"SF Pro Rounded",-apple-system,system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--ink);font-family:var(--body);-webkit-font-smoothing:antialiased}
+body{min-height:100%;padding:calc(env(safe-area-inset-top) + 14px) 18px calc(env(safe-area-inset-bottom) + 120px);overflow-x:hidden}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+:focus-visible{outline:2px solid rgba(255,255,255,.7);outline-offset:3px;border-radius:14px}
+.num{font-variant-numeric:tabular-nums}
+.hidden{display:none !important}
+
+/* glow */
+.glow{position:fixed;inset:-20% -30% auto -30%;height:75vh;pointer-events:none;z-index:0;
+  background:radial-gradient(55% 55% at 72% 38%, color-mix(in srgb,var(--glow) 70%,transparent) 0%, color-mix(in srgb,var(--glow) 28%,transparent) 38%, transparent 72%);
+  filter:blur(10px);transition:background 1s ease;opacity:.9}
+.glow::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,var(--bg) 92%)}
+.app{position:relative;z-index:1;width:100%;max-width:480px;min-width:0;margin:0 auto;display:flex;flex-direction:column;gap:26px}
+.app > *{min-width:0;max-width:100%}
+
+/* liquid glass */
+.glass{position:relative;background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,.05));
+  -webkit-backdrop-filter:blur(22px) saturate(180%);backdrop-filter:blur(22px) saturate(180%);
+  border:1px solid rgba(255,255,255,.16);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 -1px 1px rgba(255,255,255,.06),0 10px 30px rgba(0,0,0,.35)}
+.glass::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(135deg,rgba(255,255,255,.22) 0%,transparent 30%,transparent 70%,rgba(255,255,255,.08) 100%);mix-blend-mode:overlay}
+.tint{background:linear-gradient(180deg,color-mix(in srgb,var(--glow) 30%,rgba(255,255,255,.08)),color-mix(in srgb,var(--glow) 12%,rgba(255,255,255,.03)));border-color:color-mix(in srgb,var(--glow) 45%,rgba(255,255,255,.15))}
+.panel{background:linear-gradient(180deg,rgba(38,38,40,.72),rgba(22,22,24,.72));-webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);
+  border:1px solid rgba(255,255,255,.09);box-shadow:inset 0 1px 0 rgba(255,255,255,.1);border-radius:30px}
+
+/* header */
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.top h1{font-family:var(--display);font-size:40px;font-weight:700;letter-spacing:-1.2px}
+.topbtns{display:flex;gap:10px;align-items:center}
+.capsule{display:flex;align-items:center;gap:4px;height:54px;padding:5px;border-radius:27px}
+.capsule button{width:44px;height:44px;border-radius:22px;display:grid;place-items:center}
+.ring{position:relative;width:44px;height:44px;display:grid;place-items:center;font-family:var(--round);font-size:15px;font-weight:600}
+.ring svg{position:absolute;inset:0}
+.roundbtn{width:54px;height:54px;border-radius:27px;display:grid;place-items:center}
+.roundbtn svg,.capsule svg.ic{width:22px;height:22px}
+
+/* hero */
+.hero{display:flex;align-items:center;gap:16px;min-height:150px;text-align:left;width:100%}
+.hero .txt{flex:1;display:flex;flex-direction:column;gap:8px;min-width:0}
+.hero h2{font-family:var(--display);font-size:clamp(24px,7.4vw,30px);line-height:1.12;font-weight:700;letter-spacing:-.6px;text-wrap:balance}
+.hero .meta{font-family:var(--round);font-size:17px;font-weight:600;color:color-mix(in srgb,var(--glow) 55%,#fff)}
+.bigtile{width:min(118px,28vw);height:min(118px,28vw);flex:0 0 min(118px,28vw);border-radius:50%;display:grid;place-items:center;font-family:var(--round);font-size:50px;font-weight:700;color:#fff;
+  box-shadow:inset 0 2px 2px rgba(255,255,255,.45),inset 0 -6px 14px rgba(0,0,0,.25),0 14px 40px color-mix(in srgb,var(--glow) 45%,transparent);border:2px solid rgba(255,255,255,.35)}
+
+/* week */
+.week{display:grid;grid-template-columns:repeat(7,1fr);text-align:center}
+.wd{display:flex;flex-direction:column;align-items:center;gap:8px;position:relative}
+.wd .l{font-size:14px;color:var(--muted);font-weight:500}
+.wd .n{font-family:var(--round);font-size:20px;font-weight:600;width:38px;height:38px;border-radius:20px;display:grid;place-items:center}
+.wd.today .n{background:var(--today)}
+.wd .marks{height:22px;display:flex;gap:2px;justify-content:center}
+.wd.sep::before{content:"";position:absolute;left:0;top:30px;height:34px;width:2px;border-radius:1px;background:rgba(255,255,255,.25)}
+
+/* tiles */
+.tile{width:56px;height:56px;flex:0 0 56px;border-radius:50%;display:grid;place-items:center;font-family:var(--round);font-weight:700;font-size:23px;color:#fff;
+  box-shadow:inset 0 1.5px 1px rgba(255,255,255,.4),inset 0 -4px 8px rgba(0,0,0,.22)}
+.tile.xs{width:22px;height:22px;flex-basis:22px;font-size:10px;box-shadow:inset 0 1px 0 rgba(255,255,255,.4)}
+
+/* month card */
+.month{display:flex;align-items:center;gap:10px;padding:20px 14px 20px 20px;width:100%;text-align:left}
+.month .l{flex:1;display:flex;flex-direction:column;gap:4px;min-width:0}
+.month .cap{display:flex;gap:8px;align-items:center;font-size:15px;font-weight:600;color:var(--muted)}
+.month .cap i{width:18px;height:16px;border-radius:4px;background:var(--today);display:inline-block;box-shadow:inset 0 3px 0 rgba(0,0,0,.25)}
+.month .big{font-family:var(--round);font-size:clamp(24px,7.6vw,34px);font-weight:700;letter-spacing:-.8px;line-height:1.1;white-space:nowrap}
+.month .of{font-family:var(--round);font-size:15px;color:var(--muted)}
+.dots{display:grid;grid-template-columns:repeat(7,7px);gap:6px 7px;padding:6px;border-radius:10px;flex:0 0 auto}
+.dots span{width:7px;height:7px;border-radius:4px;background:rgba(255,255,255,.18)}
+.dots span.blank{background:none}
+.dots span.past{background:rgba(255,255,255,.1)}
+.dots span.pay{background:#fff}
+.dots span.today{background:var(--today)}
+.dots .wk{grid-column:1 / -1;height:0}
+.chev{color:var(--muted);flex:0 0 auto}
+
+/* groups */
+.group{display:flex;flex-direction:column;gap:12px}
+.group h3{font-family:var(--display);font-size:24px;font-weight:700;letter-spacing:-.4px;padding:0 4px}
+.rows{overflow:hidden}
+.row{display:flex;align-items:center;gap:14px;padding:16px 18px;width:100%;text-align:left;position:relative}
+.row + .row::before{content:"";position:absolute;top:0;left:88px;right:18px;height:1px;background:rgba(255,255,255,.09)}
+.row .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.row .name{font-size:17px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.2px}
+.row .when{font-size:14px;color:var(--muted)}
+.row .right{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+.row .price{font-family:var(--round);font-size:18px;font-weight:600;white-space:nowrap}
+.row .cyc{font-size:14px;color:var(--muted);display:flex;gap:5px;align-items:center;white-space:nowrap}
+.row.paused{opacity:.4}
+.badge{font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;background:rgba(255,255,255,.12);color:var(--muted)}
+
+/* subscriptions tab */
+.totals{display:flex;flex-direction:column;gap:6px;padding:0 4px}
+.totals .cap{font-size:15px;color:var(--muted);font-weight:500}
+.totals .big{font-family:var(--round);font-size:46px;font-weight:700;letter-spacing:-1.2px;line-height:1.05}
+.totals .meta{display:flex;gap:16px;flex-wrap:wrap;font-size:14px;color:var(--muted)}
+.totals .meta b{color:#fff;font-weight:600;font-family:var(--round)}
+.bar{display:flex;height:10px;border-radius:5px;overflow:hidden;gap:3px;margin-top:12px}
+.bar span{height:100%;border-radius:2px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;font-size:13px;color:var(--muted)}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:6px}
+.seg{display:flex;padding:4px;border-radius:18px;align-self:flex-start}
+.seg button{padding:8px 16px;border-radius:14px;font-size:14px;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:rgba(255,255,255,.16);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.25)}
+
+/* empty */
+.empty{padding:28px 22px;display:flex;flex-direction:column;gap:16px;align-items:flex-start}
+.empty p{color:var(--muted);font-size:15px;line-height:1.45}
+.empty button{padding:12px 18px;border-radius:999px;font-weight:600}
+
+/* tab bar */
+.tabbar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 14px);z-index:6;display:flex;padding:6px;border-radius:40px;gap:4px;width:min(330px,calc(100% - 64px))}
+.tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:9px 6px 8px;border-radius:32px;font-size:13px;font-weight:600;color:rgba(255,255,255,.85)}
+.tabbar button[aria-selected="true"]{background:rgba(255,255,255,.16);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),inset 0 -1px 0 rgba(255,255,255,.05)}
+.tabbar svg{width:30px;height:24px}
+
+/* sheets */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .25s;z-index:10}
+.scrim.on{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:8px;right:8px;bottom:calc(env(safe-area-inset-bottom) + 8px);max-width:520px;margin:0 auto;border-radius:34px;padding:10px 20px 20px;transform:translateY(115%);transition:transform .34s cubic-bezier(.2,.9,.25,1);z-index:11;max-height:88%;overflow-y:auto;
+  background:linear-gradient(180deg,rgba(44,44,46,.82),rgba(28,28,30,.86));-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);border:1px solid rgba(255,255,255,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 -10px 40px rgba(0,0,0,.4)}
+.sheet.on{transform:none}
+.grab{width:40px;height:5px;border-radius:3px;background:rgba(255,255,255,.25);margin:0 auto 14px}
+.sheethead{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.sheethead h3{font-family:var(--display);font-size:21px;font-weight:700}
+.x{width:36px;height:36px;border-radius:18px;display:grid;place-items:center;background:rgba(255,255,255,.12);box-shadow:inset 0 1px 0 rgba(255,255,255,.2)}
+.preview{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+.preview .tile{width:64px;height:64px;flex-basis:64px;font-size:27px}
+.preview .pn{font-size:19px;font-weight:700}
+.preview .pm{font-size:14px;color:var(--muted);font-family:var(--round)}
+.fields{display:flex;flex-direction:column;gap:14px}
+.field{display:flex;flex-direction:column;gap:7px}
+.field label,.flabel{font-size:13px;color:var(--muted);font-weight:500;padding-left:4px}
+.field input,.field select{background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:13px 14px;font-size:17px;width:100%;appearance:none;-webkit-appearance:none;min-height:50px}
+.field input:focus,.field select:focus{outline:none;border-color:rgba(255,255,255,.4)}
+.two{display:grid;grid-template-columns:1.25fr 1fr;gap:10px}
+.colors{display:flex;flex-wrap:wrap;gap:10px}
+.colors button{width:32px;height:32px;border-radius:16px;box-shadow:inset 0 1px 1px rgba(255,255,255,.4)}
+.colors button[aria-pressed="true"]{outline:2px solid #fff;outline-offset:3px}
+.toggle{display:flex;align-items:center;justify-content:space-between;font-size:16px;padding:4px}
+.switch{width:52px;height:32px;border-radius:16px;background:rgba(255,255,255,.16);position:relative;transition:background .2s;flex:0 0 52px}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:13px;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.3);transition:transform .2s}
+.switch[aria-checked="true"]{background:#30D158}
+.switch[aria-checked="true"]::after{transform:translateX(20px)}
+.actions{display:flex;flex-direction:column;gap:8px;margin-top:20px}
+.primary{background:#fff;color:#000;border-radius:18px;padding:16px;font-weight:700;font-size:17px}
+.danger{color:#FF453A;padding:12px;font-weight:600;font-size:16px}
+.confirm{display:none;background:rgba(255,69,58,.14);border-radius:18px;padding:14px;gap:12px;flex-direction:column;font-size:15px}
+.confirm.on{display:flex}
+.confirm div{display:flex;gap:8px}
+.confirm button{flex:1;padding:12px;border-radius:14px;font-weight:600}
+.confirm .yes{background:#FF453A;color:#fff}
+.confirm .no{background:rgba(255,255,255,.12)}
+.hint{font-size:13px;color:var(--muted);line-height:1.4;padding-left:4px}
+.rates{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.backup{display:grid;place-items:center;padding:13px;border-radius:16px;font-weight:600;font-size:15px;cursor:pointer;text-align:center}
+
+/* calendar sheet */
+.calhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.calhead h4{font-family:var(--display);font-size:19px;font-weight:700;text-transform:capitalize}
+.calnav{display:flex;gap:6px}
+.calnav button{width:36px;height:36px;border-radius:18px;display:grid;place-items:center;background:rgba(255,255,255,.1)}
+.cgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cgrid .dow{font-size:12px;color:var(--muted);text-align:center;padding-bottom:4px}
+.cday{aspect-ratio:1/1.2;border-radius:12px;padding:5px 2px;display:flex;flex-direction:column;align-items:center;gap:4px;font-family:var(--round);font-size:15px;font-weight:600}
+.cday.out{visibility:hidden}
+.cday.has{background:rgba(255,255,255,.07)}
+.cday.today .d{background:var(--today);border-radius:10px;padding:0 6px}
+.cday.sel{outline:2px solid rgba(255,255,255,.6)}
+.cday .m{display:flex;flex-wrap:wrap;justify-content:center;gap:2px}
+.cday .m .tile{width:16px;height:16px;flex-basis:16px;font-size:8px}
+.calsum{margin:14px 4px 4px;font-size:14px;color:var(--muted);display:flex;justify-content:space-between}
+.calsum b{color:#fff;font-family:var(--round)}
+.daylist{margin-top:10px;border-radius:22px;background:rgba(0,0,0,.25)}
+
+.note{font-size:13px;color:var(--muted);text-align:center;padding:4px 16px;line-height:1.4}
+.note.warn{color:#FFB224}
+@media (prefers-reduced-motion: reduce){.sheet,.scrim,.switch,.switch::after,.glow{transition:none}}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .glass{background:rgba(40,40,42,.92)} .sheet{background:#1C1C1E}
+}
+</style>
+</head>
+<body>
+<div class="glow" id="glow"></div>
+<div class="app">
+  <header class="top">
+    <h1 id="pageTitle">Скоро</h1>
+    <div class="topbtns">
+      <div class="capsule glass tint">
+        <div class="ring" aria-label="Активных подписок"><svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="18.5" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="3"/><circle id="ringArc" cx="22" cy="22" r="18.5" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-dasharray="116.2" stroke-dashoffset="0" transform="rotate(-90 22 22)"/></svg><span id="ringNum" class="num">0</span></div>
+        <button id="settingsBtn" aria-label="Валюта и курсы"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2.2"/><circle cx="9" cy="17" r="2.2"/></svg></button>
+      </div>
+      <button class="roundbtn glass tint" id="addBtn" aria-label="Добавить подписку"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 4.5v15M4.5 12h15"/></svg></button>
+    </div>
+  </header>
+
+  <!-- UPCOMING -->
+  <div id="viewUp" class="app" style="gap:26px">
+    <button class="hero" id="hero"></button>
+    <div class="week" id="week"></div>
+    <button class="month panel" id="monthCard" aria-label="Открыть календарь"></button>
+    <div id="groups" class="app" style="gap:26px"></div>
+    <div class="empty panel hidden" id="emptyUp"><p>Здесь появятся ближайшие списания. Добавь первую подписку: название, цена и дата следующего платежа.</p><button class="glass" data-add>Добавить подписку</button></div>
+  </div>
+
+  <!-- ALL -->
+  <div id="viewAll" class="app hidden" style="gap:24px">
+    <section class="totals">
+      <div class="cap">В месяц</div>
+      <div class="big num" id="monthTotal">0</div>
+      <div class="meta"><span>В год <b class="num" id="yearTotal">0</b></span><span>Активных <b class="num" id="activeCount">0</b></span></div>
+      <div class="bar" id="catBar"></div>
+      <div class="legend" id="catLegend"></div>
+    </section>
+    <div class="seg glass" role="group" aria-label="Сортировка">
+      <button id="sortDate" aria-pressed="true">По дате</button>
+      <button id="sortPrice" aria-pressed="false">По цене</button>
+    </div>
+    <div class="rows panel" id="allList"></div>
+    <div class="empty panel hidden" id="emptyAll"><p>Подписок пока нет.</p><button class="glass" data-add>Добавить подписку</button></div>
+  </div>
+
+  <p class="note hidden" id="storeNote"></p>
+</div>
+
+<nav class="tabbar glass" role="tablist">
+  <button role="tab" id="tabUp" aria-selected="true">
+    <svg viewBox="0 0 30 24"><circle cx="11" cy="12" r="9" fill="currentColor"/><path d="M21.5 4.5a9 9 0 0 1 0 15" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>Скоро</button>
+  <button role="tab" id="tabAll" aria-selected="false">
+    <svg viewBox="0 0 30 24"><circle cx="9.5" cy="6.5" r="5" fill="currentColor"/><circle cx="20.5" cy="6.5" r="5" fill="currentColor"/><circle cx="9.5" cy="17.5" r="5" fill="currentColor"/><circle cx="20.5" cy="17.5" r="5" fill="currentColor"/></svg>Подписки</button>
+</nav>
+
+<div class="scrim" id="scrim"></div>
+
+<!-- edit -->
+<div class="sheet" id="editSheet" role="dialog" aria-modal="true" aria-labelledby="editTitle">
+  <div class="grab"></div>
+  <div class="sheethead"><h3 id="editTitle">Новая подписка</h3><button class="x" data-close aria-label="Закрыть"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="preview"><div id="pvTileWrap"></div><div><div class="pn" id="pvName">Название</div><div class="pm" id="pvMeta">Укажи цену</div></div></div>
+  <form class="fields" id="form" novalidate>
+    <div class="field"><label for="fName">Название</label><input id="fName" maxlength="40" autocomplete="off" placeholder="Spotify"></div>
+    <div class="two">
+      <div class="field"><label for="fPrice">Цена</label><input id="fPrice" inputmode="decimal" placeholder="69 000" autocomplete="off"></div>
+      <div class="field"><label for="fCur">Валюта</label><select id="fCur"></select></div>
+    </div>
+    <div class="two">
+      <div class="field"><label for="fCycle">Как часто</label>
+        <select id="fCycle"><option value="1w">Каждую неделю</option><option value="1m" selected>Каждый месяц</option><option value="3m">Раз в 3 месяца</option><option value="6m">Раз в полгода</option><option value="1y">Каждый год</option></select></div>
+      <div class="field"><label for="fNext">Следующее списание</label><input id="fNext" type="date"></div>
+    </div>
+    <div class="field"><label for="fCat">Категория</label><select id="fCat"></select></div>
+    <div class="field"><span class="flabel">Цвет</span><div class="colors" id="colors"></div></div>
+    <div class="toggle"><span>На паузе</span><button type="button" class="switch" id="fPaused" role="switch" aria-checked="false" aria-label="На паузе"></button></div>
+    <div class="actions">
+      <button class="primary" type="submit">Сохранить</button>
+      <button class="danger hidden" type="button" id="delBtn">Удалить подписку</button>
+      <div class="confirm" id="confirmDel"><span>Удалить <b id="delName"></b>? Вернуть не получится.</span><div><button type="button" class="no" id="delNo">Отмена</button><button type="button" class="yes" id="delYes">Удалить</button></div></div>
+    </div>
+  </form>
+</div>
+
+<!-- settings -->
+<div class="sheet" id="setSheet" role="dialog" aria-modal="true" aria-labelledby="setTitle">
+  <div class="grab"></div>
+  <div class="sheethead"><h3 id="setTitle">Валюта</h3><button class="x" data-close aria-label="Закрыть"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="fields">
+    <div class="field"><label for="sBase">Показывать суммы в</label><select id="sBase"></select></div>
+    <p class="hint">Курсы к 1 USD задаются вручную. Поправь под свой курс, итоги пересчитаются.</p>
+    <div class="rates" id="rates"></div>
+    <div class="field" style="margin-top:8px"><span class="flabel">Резервная копия</span>
+      <p class="hint">Подписки хранятся только на этом телефоне. Время от времени сохраняй копию в Файлы, чтобы не потерять.</p>
+      <div class="two" style="grid-template-columns:1fr 1fr"><button type="button" class="glass backup" id="exportBtn">Сохранить копию</button><label class="glass backup" for="importFile">Загрузить копию</label></div>
+      <input type="file" id="importFile" accept="application/json,.json" class="hidden">
+      <p class="hint" id="importMsg"></p></div>
+  </div>
+</div>
+
+<!-- calendar -->
+<div class="sheet" id="calSheet" role="dialog" aria-modal="true" aria-labelledby="calTitle">
+  <div class="grab"></div>
+  <div class="calhead"><h4 id="calTitle"></h4><div class="calnav">
+    <button id="prevM" aria-label="Предыдущий месяц"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <button id="nextM" aria-label="Следующий месяц"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M9 5l7 7-7 7"/></svg></button>
+    <button data-close aria-label="Закрыть"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div></div>
+  <div class="cgrid" id="calGrid"></div>
+  <div class="calsum"><span>Списаний: <b class="num" id="calCount">0</b></span><span>Сумма: <b class="num" id="calSum">0</b></span></div>
+  <div class="daylist" id="dayList"></div>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const CURS = ["IDR","USD","EUR","RUB","KZT"];
+  const DEFAULT_RATES = {USD:1, IDR:16600, EUR:0.87, RUB:80, KZT:520};
+  const COLORS = ["#1DB954","#FF3B30","#FF9F0A","#FFD60A","#30D158","#64D2FF","#0A84FF","#5E5CE6","#BF5AF2","#FF375F","#D97757","#8E8E93","#2C2C2E"];
+  const CATS = [
+    {id:"work",name:"Работа и софт",color:"#0A84FF"},
+    {id:"ai",name:"AI",color:"#BF5AF2"},
+    {id:"media",name:"Кино и видео",color:"#FF375F"},
+    {id:"music",name:"Музыка и звук",color:"#30D158"},
+    {id:"cloud",name:"Облако",color:"#64D2FF"},
+    {id:"life",name:"Жизнь",color:"#FF9F0A"},
+    {id:"other",name:"Другое",color:"#8E8E93"}
+  ];
+  const CYCLES = {"1w":[1,"w"],"1m":[1,"m"],"3m":[3,"m"],"6m":[6,"m"],"1y":[1,"y"]};
+  const CYCLE_LABEL = {"1w":"Еженедельно","1m":"Ежемесячно","3m":"Раз в 3 мес","6m":"Раз в полгода","1y":"Ежегодно"};
+  const MONTHLY = {"1w":52/12,"1m":1,"3m":1/3,"6m":1/6,"1y":1/12};
+  const DOW = ["Вс","Пн","Вт","Ср","Чт","Пт","Сб"];
+  const DOW_IN = ["в воскресенье","в понедельник","во вторник","в среду","в четверг","в пятницу","в субботу"];
+  const REPEAT = `<svg width="17" height="14" viewBox="0 0 24 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V7a3 3 0 0 1 3-3h13M17 1l3 3-3 3M20 11v2a3 3 0 0 1-3 3H4M7 19l-3-3 3-3"/></svg>`;
+
+  let subs = [];
+  let settings = {base:"IDR", rates:{...DEFAULT_RATES}};
+  let sortBy = "date";
+  let editing = null, color = COLORS[0], paused = false;
+  let calMonth = startOfMonth(new Date()), selDay = null;
+
+  /* ---------- dates ---------- */
+  function today(){ const d=new Date(); d.setHours(0,0,0,0); return d; }
+  function startOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
+  function parseISO(s){ const [y,m,d]=String(s||"").split("-").map(Number); if(!y) return today(); return new Date(y,m-1,d); }
+  function toISO(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+  function addCycle(base, anchorDay, n, unit, k){
+    if(unit==="w"){ const d=new Date(base); d.setDate(d.getDate()+7*n*k); return d; }
+    const months = unit==="y" ? 12*n*k : n*k;
+    const y=base.getFullYear(), m=base.getMonth()+months, last=new Date(y,m+1,0).getDate();
+    return new Date(y, m, Math.min(anchorDay,last));
+  }
+  function occ(s,k){ const [n,u]=CYCLES[s.cycle]||CYCLES["1m"]; const a=parseISO(s.next); return addCycle(a,a.getDate(),n,u,k); }
+  function nextDate(s){ const t=today(); let k=0,d=occ(s,0); while(d<t && k<2000){k++; d=occ(s,k);} return d; }
+  function occIn(s,from,to){ const o=[]; let k=0,d=occ(s,0); while(d>from && k>-600){k--; d=occ(s,k);} while(d<=to && k<2000){ if(d>=from) o.push(d); k++; d=occ(s,k);} return o; }
+  const daysUntil = d => Math.round((d-today())/86400000);
+  const fmtDay = d => d.toLocaleDateString("ru-RU",{day:"numeric",month:"short"}).replace(".","");
+  function whenPhrase(d){
+    const n=daysUntil(d);
+    if(n===0) return "сегодня"; if(n===1) return "завтра";
+    if(n<7) return DOW_IN[d.getDay()];
+    return d.toLocaleDateString("ru-RU",{day:"numeric",month:"long"});
+  }
+
+  /* ---------- money ---------- */
+  function toBase(a,cur){ const r=settings.rates||DEFAULT_RATES; return a/(Number(r[cur])||DEFAULT_RATES[cur]||1)*(Number(r[settings.base])||1); }
+  function money(v,cur){
+    const noCents=["IDR","RUB","KZT"].includes(cur)||Math.abs(v)>=1000;
+    try{ return new Intl.NumberFormat("ru-RU",{style:"currency",currency:cur,currencyDisplay:"narrowSymbol",maximumFractionDigits:noCents?0:2}).format(v); }
+    catch(_){ return Math.round(v)+" "+cur; }
+  }
+  const price = s => Number(s.price)||0;
+  const monthlyBase = s => toBase(price(s),s.cur)*(MONTHLY[s.cycle]||1);
+
+  /* ---------- storage (on this device) ---------- */
+  const LS_KEY="subs-tracker-v1";
+  function load(){ try{ const j=JSON.parse(localStorage.getItem(LS_KEY)||"{}"); subs=Array.isArray(j.subs)?j.subs:[]; if(j.settings) settings={base:"IDR",...j.settings,rates:{...DEFAULT_RATES,...(j.settings.rates||{})}}; }catch(_){} }
+  function persist(){ try{ localStorage.setItem(LS_KEY,JSON.stringify({subs,settings})); note(""); }catch(e){ note("Не получилось сохранить на устройстве: "+(e.message||e),true); } }
+  const newId = () => "s"+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+  async function saveSub(s){ const i=subs.findIndex(x=>x.id===s.id); if(i>=0) subs[i]=s; else subs.push(s); persist(); render(); }
+  async function removeSub(id){ subs=subs.filter(x=>x.id!==id); persist(); render(); }
+  function saveSettings(){ persist(); render(); }
+  function note(t,warn){ const n=$("storeNote"); n.textContent=t; n.classList.toggle("warn",!!warn); n.classList.toggle("hidden",!t); }
+  function initStore(){
+    load(); render(); note("");
+    try{ if(navigator.storage&&navigator.storage.persist) navigator.storage.persist(); }catch(_){}
+  }
+  function exportData(){
+    const data=JSON.stringify({app:"subs",version:1,exported:new Date().toISOString(),subs,settings},null,2);
+    const name="подписки-"+toISO(today())+".json";
+    const file=new File([data],name,{type:"application/json"});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){ navigator.share({files:[file],title:"Подписки: резервная копия"}).catch(()=>{}); return; }
+    const a=document.createElement("a"); a.href=URL.createObjectURL(file); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},1000);
+  }
+  function importData(file){
+    const r=new FileReader();
+    r.onload=()=>{ try{
+      const j=JSON.parse(r.result); if(!Array.isArray(j.subs)) throw new Error("в файле нет списка подписок");
+      subs=j.subs.filter(x=>x&&x.id&&x.name); if(j.settings) settings={...settings,...j.settings,rates:{...DEFAULT_RATES,...(j.settings.rates||{})}};
+      persist(); render(); $("importMsg").textContent="Загружено подписок: "+subs.length;
+    }catch(e){ $("importMsg").textContent="Не получилось прочитать файл: "+(e.message||e); } };
+    r.readAsText(file);
+  }
+
+  /* ---------- render ---------- */
+  const esc = t => String(t).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const letter = s => ((s.name||"?").trim().charAt(0)||"?").toUpperCase();
+  const tile = (s,cls="") => `<div class="tile ${cls}" style="background:radial-gradient(120% 120% at 30% 20%, color-mix(in srgb,${esc(s.color)} 70%,#fff) 0%, ${esc(s.color)} 45%, color-mix(in srgb,${esc(s.color)} 80%,#000) 100%)">${esc(letter(s))}</div>`;
+
+  function render(){
+    const t=today();
+    const active=subs.filter(s=>!s.paused);
+    const items=active.map(s=>({s,d:nextDate(s)})).sort((a,b)=>a.d-b.d || monthlyBase(b.s)-monthlyBase(a.s));
+    const first=items[0];
+    document.documentElement.style.setProperty("--glow", first?first.s.color:"#5E5CE6");
+
+    // ring
+    $("ringNum").textContent=active.length;
+    $("ringArc").setAttribute("stroke-dashoffset", subs.length? String(116.2*(1-active.length/subs.length)) : "116.2");
+
+    // hero
+    if(first){
+      $("hero").innerHTML=`<div class="txt"><h2>${esc(first.s.name)} спишется ${esc(whenPhrase(first.d))}</h2><div class="meta num">${money(price(first.s),first.s.cur)} · ${CYCLE_LABEL[first.s.cycle]}</div></div><div class="bigtile" style="background:radial-gradient(120% 120% at 30% 20%, color-mix(in srgb,${esc(first.s.color)} 65%,#fff) 0%, ${esc(first.s.color)} 45%, color-mix(in srgb,${esc(first.s.color)} 75%,#000) 100%)">${esc(letter(first.s))}</div>`;
+      $("hero").dataset.id=first.s.id;
+    } else {
+      $("hero").innerHTML=`<div class="txt"><h2>Списаний пока нет</h2><div class="meta">Нажми +, чтобы добавить подписку</div></div>`;
+      delete $("hero").dataset.id;
+    }
+
+    // week strip
+    const wEnd=new Date(t); wEnd.setDate(wEnd.getDate()+6);
+    let w="";
+    for(let i=0;i<7;i++){
+      const d=new Date(t); d.setDate(d.getDate()+i);
+      const due=active.filter(s=>occIn(s,d,d).length);
+      const marks=due.slice(0,2).map(s=>tile(s,"xs")).join("");
+      w+=`<div class="wd${i===0?" today":""}${i>0&&d.getDay()===1?" sep":""}"><span class="l">${DOW[d.getDay()]}</span><span class="n num">${d.getDate()}</span><span class="marks">${marks}</span></div>`;
+    }
+    $("week").innerHTML=w;
+
+    // month card
+    const mStart=startOfMonth(t), mEnd=new Date(t.getFullYear(),t.getMonth()+1,0);
+    let remain=0; const payDays=new Set();
+    active.forEach(s=>occIn(s,mStart,mEnd).forEach(d=>{ if(d>=t){ remain+=toBase(price(s),s.cur); payDays.add(d.getDate()); } }));
+    const monthTotal=active.reduce((a,s)=>a+monthlyBase(s),0);
+    const monthName=t.toLocaleDateString("ru-RU",{month:"long"});
+    const lead=(mStart.getDay()+6)%7;
+    let dots=""; for(let i=0;i<lead;i++) dots+=`<span class="blank"></span>`;
+    for(let dd=1; dd<=mEnd.getDate(); dd++){
+      const cls = dd===t.getDate()?"today": payDays.has(dd)?"pay": dd<t.getDate()?"past":"";
+      dots+=`<span class="${cls}"></span>`;
+    }
+    $("monthCard").innerHTML=`<div class="l"><div class="cap"><i></i>Осталось в ${esc(monthPrep(t))}</div><div class="big num">${money(remain,settings.base)}</div><div class="of num">из ${money(monthTotal,settings.base)} в месяц</div></div><div class="dots" aria-hidden="true">${dots}</div><svg class="chev" width="10" height="16" viewBox="0 0 10 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M2 2l6 6-6 6"/></svg>`;
+
+    // groups
+    const groups=[]; const byKey={};
+    items.forEach(it=>{
+      const n=daysUntil(it.d);
+      let key,title;
+      if(n<=7){ key="w"; title="Ближайшая неделя"; }
+      else { key=it.d.getFullYear()+"-"+it.d.getMonth(); title=cap(it.d.toLocaleDateString("ru-RU",{month:"long"}))+(it.d.getFullYear()!==t.getFullYear()?" "+it.d.getFullYear():""); }
+      if(!byKey[key]){ byKey[key]={title,items:[]}; groups.push(byKey[key]); }
+      byKey[key].items.push(it);
+    });
+    $("groups").innerHTML=groups.map(g=>`<section class="group"><h3>${esc(g.title)}</h3><div class="rows panel">${g.items.map(rowHTML).join("")}</div></section>`).join("");
+    ["hero","week","monthCard"].forEach(id=>$(id).classList.toggle("hidden", !subs.length));
+    $("emptyUp").classList.toggle("hidden", subs.length>0);
+
+    // all tab
+    $("monthTotal").textContent=money(monthTotal,settings.base);
+    $("yearTotal").textContent=money(monthTotal*12,settings.base);
+    $("activeCount").textContent=active.length+(subs.length>active.length?" из "+subs.length:"");
+    const byCat={}; active.forEach(s=>{ const c=s.cat||"other"; byCat[c]=(byCat[c]||0)+monthlyBase(s); });
+    const cats=CATS.filter(c=>byCat[c.id]>0).sort((a,b)=>byCat[b.id]-byCat[a.id]);
+    $("catBar").innerHTML=monthTotal>0?cats.map(c=>`<span style="flex:${byCat[c.id]};background:${c.color}"></span>`).join(""):"";
+    $("catLegend").innerHTML=cats.map(c=>`<span><i style="background:${c.color}"></i>${esc(c.name)} ${Math.round(byCat[c.id]/monthTotal*100)}%</span>`).join("");
+    const all=subs.map(s=>({s,d:nextDate(s)})).sort((a,b)=>{
+      if(!!a.s.paused!==!!b.s.paused) return a.s.paused?1:-1;
+      return sortBy==="date"? a.d-b.d : monthlyBase(b.s)-monthlyBase(a.s);
+    });
+    $("allList").innerHTML=all.map(rowHTML).join("");
+    $("allList").classList.toggle("hidden",!subs.length);
+    $("emptyAll").classList.toggle("hidden",subs.length>0);
+    $("sortDate").setAttribute("aria-pressed",String(sortBy==="date"));
+    $("sortPrice").setAttribute("aria-pressed",String(sortBy==="price"));
+
+    if($("calSheet").classList.contains("on")) renderCal();
+  }
+  const cap = s => s.charAt(0).toUpperCase()+s.slice(1);
+  function monthPrep(d){ return ["январе","феврале","марте","апреле","мае","июне","июле","августе","сентябре","октябре","ноябре","декабре"][d.getMonth()]; }
+  function rowHTML({s,d}){
+    const n=daysUntil(d);
+    const when = s.paused ? `<span class="badge">На паузе</span>` : (n===0?"Спишется сегодня":n===1?"Спишется завтра":"Спишется "+fmtDay(d));
+    return `<button class="row${s.paused?" paused":""}" data-id="${esc(s.id)}">${tile(s)}<div class="info"><div class="name">${esc(s.name)}</div><div class="when">${when}</div></div><div class="right"><span class="price num">${money(price(s),s.cur)}</span><span class="cyc">${CYCLE_LABEL[s.cycle]||""} ${REPEAT}</span></div></button>`;
+  }
+
+  function renderCal(){
+    const m=calMonth,y=m.getFullYear(),mo=m.getMonth(),t=today();
+    $("calTitle").textContent=m.toLocaleDateString("ru-RU",{month:"long",year:"numeric"}).replace(" г.","");
+    const first=new Date(y,mo,1), last=new Date(y,mo+1,0);
+    const map={}; let count=0,sum=0;
+    subs.filter(s=>!s.paused).forEach(s=>occIn(s,first,last).forEach(d=>{ (map[d.getDate()]=map[d.getDate()]||[]).push(s); count++; sum+=toBase(price(s),s.cur); }));
+    $("calCount").textContent=count; $("calSum").textContent=money(sum,settings.base);
+    let h=["Пн","Вт","Ср","Чт","Пт","Сб","Вс"].map(x=>`<div class="dow">${x}</div>`).join("");
+    for(let i=0;i<(first.getDay()+6)%7;i++) h+=`<div class="cday out"></div>`;
+    for(let dd=1;dd<=last.getDate();dd++){
+      const it=map[dd]||[], isT=y===t.getFullYear()&&mo===t.getMonth()&&dd===t.getDate();
+      h+=`<button class="cday${it.length?" has":""}${isT?" today":""}${selDay===dd?" sel":""}" data-day="${dd}" aria-label="${dd}, списаний ${it.length}"><span class="d num">${dd}</span><span class="m">${it.slice(0,4).map(s=>tile(s)).join("")}</span></button>`;
+    }
+    $("calGrid").innerHTML=h;
+    const di=selDay?(map[selDay]||[]):[];
+    $("dayList").classList.toggle("hidden",!di.length);
+    $("dayList").innerHTML=di.map(s=>rowHTML({s,d:new Date(y,mo,selDay)})).join("");
+  }
+
+  /* ---------- sheets ---------- */
+  function openSheet(id){ $("scrim").classList.add("on"); $(id).classList.add("on"); }
+  function closeSheets(){ $("scrim").classList.remove("on"); document.querySelectorAll(".sheet").forEach(s=>s.classList.remove("on")); $("confirmDel").classList.remove("on"); }
+  function fill(){
+    $("fCur").innerHTML=CURS.map(c=>`<option>${c}</option>`).join("");
+    $("sBase").innerHTML=CURS.map(c=>`<option>${c}</option>`).join("");
+    $("fCat").innerHTML=CATS.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join("");
+    $("colors").innerHTML=COLORS.map(c=>`<button type="button" style="background:${c}" data-c="${c}" aria-label="Цвет ${c}" aria-pressed="false"></button>`).join("");
+  }
+  function setColor(c){ color=c; document.querySelectorAll("#colors button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.c===c))); preview(); }
+  function setPaused(v){ paused=v; $("fPaused").setAttribute("aria-checked",String(v)); }
+  const parsePrice = v => { const n=parseFloat(String(v).replace(/[\s ]/g,"").replace(",",".")); return isFinite(n)&&n>0?n:0; };
+  function preview(){
+    const s={name:$("fName").value||"Название",color};
+    $("pvTileWrap").innerHTML=tile(s); $("pvName").textContent=s.name;
+    const p=parsePrice($("fPrice").value);
+    $("pvMeta").textContent=p?money(p,$("fCur").value)+" · "+CYCLE_LABEL[$("fCycle").value]:"Укажи цену";
+  }
+  function openEdit(id){
+    editing=id||null; const s=id?subs.find(x=>x.id===id):null;
+    $("editTitle").textContent=s?"Подписка":"Новая подписка";
+    $("fName").value=s?s.name:""; $("fPrice").value=s?String(s.price):"";
+    $("fCur").value=s?s.cur:(settings.lastCur||settings.base||"IDR");
+    $("fCycle").value=s?s.cycle:"1m";
+    $("fNext").value=toISO(s?nextDate(s):today());
+    $("fCat").value=s?(s.cat||"other"):"work";
+    setColor(s?s.color:COLORS[0]); setPaused(s?!!s.paused:false);
+    $("delBtn").classList.toggle("hidden",!s); $("confirmDel").classList.remove("on");
+    preview(); openSheet("editSheet");
+  }
+  function openSettings(){
+    $("sBase").value=settings.base;
+    $("rates").innerHTML=CURS.filter(c=>c!=="USD").map(c=>`<div class="field"><label for="r_${c}">1 USD в ${c}</label><input id="r_${c}" data-cur="${c}" inputmode="decimal" value="${esc(settings.rates[c]??DEFAULT_RATES[c])}"></div>`).join("");
+    openSheet("setSheet");
+  }
+
+  /* ---------- events ---------- */
+  fill();
+  $("addBtn").onclick=()=>openEdit(null);
+  document.querySelectorAll("[data-add]").forEach(b=>b.onclick=()=>openEdit(null));
+  document.querySelectorAll("[data-close]").forEach(b=>b.onclick=closeSheets);
+  $("scrim").onclick=closeSheets;
+  document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeSheets(); });
+  $("settingsBtn").onclick=openSettings;
+  ["fName","fPrice","fCur","fCycle"].forEach(i=>$(i).addEventListener("input",preview));
+  $("colors").onclick=e=>{ const b=e.target.closest("[data-c]"); if(b) setColor(b.dataset.c); };
+  $("fPaused").onclick=()=>setPaused(!paused);
+  const openRow = e => { const r=e.target.closest(".row[data-id]"); if(r){ closeSheets(); openEdit(r.dataset.id); } };
+  $("groups").onclick=openRow; $("allList").onclick=openRow; $("dayList").onclick=openRow;
+  $("hero").onclick=()=>{ if($("hero").dataset.id) openEdit($("hero").dataset.id); };
+  $("monthCard").onclick=()=>{ calMonth=startOfMonth(new Date()); selDay=null; renderCal(); openSheet("calSheet"); };
+  $("prevM").onclick=()=>{ calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()-1,1); selDay=null; renderCal(); };
+  $("nextM").onclick=()=>{ calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+1,1); selDay=null; renderCal(); };
+  $("calGrid").onclick=e=>{ const b=e.target.closest("[data-day]"); if(!b) return; const d=Number(b.dataset.day); selDay=selDay===d?null:d; renderCal(); };
+  $("sortDate").onclick=()=>{ sortBy="date"; render(); };
+  $("sortPrice").onclick=()=>{ sortBy="price"; render(); };
+  function tab(which){
+    const up=which==="up";
+    $("tabUp").setAttribute("aria-selected",String(up)); $("tabAll").setAttribute("aria-selected",String(!up));
+    $("viewUp").classList.toggle("hidden",!up); $("viewAll").classList.toggle("hidden",up);
+    $("pageTitle").textContent=up?"Скоро":"Подписки";
+    window.scrollTo({top:0});
+  }
+  $("tabUp").onclick=()=>tab("up"); $("tabAll").onclick=()=>tab("all");
+
+  $("form").addEventListener("submit",async e=>{
+    e.preventDefault();
+    const name=$("fName").value.trim(), p=parsePrice($("fPrice").value);
+    if(!name){ $("fName").focus(); $("pvMeta").textContent="Впиши название"; return; }
+    if(!p){ $("fPrice").focus(); $("pvMeta").textContent="Цена должна быть больше нуля"; return; }
+    const s={id:editing||newId(),name,price:p,cur:$("fCur").value,cycle:$("fCycle").value,next:$("fNext").value||toISO(today()),cat:$("fCat").value,color,paused,updated:Date.now()};
+    if(settings.lastCur!==s.cur){ settings.lastCur=s.cur; saveSettings(); }
+    closeSheets(); await saveSub(s);
+  });
+  $("delBtn").onclick=()=>{ $("delName").textContent=$("fName").value; $("confirmDel").classList.add("on"); };
+  $("delNo").onclick=()=>$("confirmDel").classList.remove("on");
+  $("delYes").onclick=async()=>{ const id=editing; closeSheets(); if(id) await removeSub(id); };
+  $("sBase").onchange=()=>{ settings.base=$("sBase").value; saveSettings(); };
+  $("rates").addEventListener("input",e=>{ const i=e.target.closest("[data-cur]"); if(!i) return; const v=parsePrice(i.value); if(v){ settings.rates={...settings.rates,[i.dataset.cur]:v}; saveSettings(); } });
+
+  $("exportBtn").onclick=exportData;
+  $("importFile").onchange=e=>{ const f=e.target.files&&e.target.files[0]; if(f) importData(f); e.target.value=""; };
+  // re-render when the day changes or the app comes back to the foreground
+  document.addEventListener("visibilitychange",()=>{ if(!document.hidden) render(); });
+  if("serviceWorker" in navigator){ window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{})); }
+
+  initStore();
+})();
+</script>
+</body>
+</html>
