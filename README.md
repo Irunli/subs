@@ -5,10 +5,10 @@
 **Открыть:** [irunli.github.io/subs](https://irunli.github.io/subs/)
 
 <p>
-  <img src="screenshots/upcoming.png" width="200" alt="Экран «Скоро»">
-  <img src="screenshots/subscriptions.png" width="200" alt="Экран «Подписки»">
-  <img src="screenshots/calendar.png" width="200" alt="Календарь списаний">
-  <img src="screenshots/edit.png" width="200" alt="Выбор иконки">
+  <img src="upcoming.png" width="200" alt="Экран «Скоро»">
+  <img src="subscriptions.png" width="200" alt="Экран «Подписки»">
+  <img src="calendar.png" width="200" alt="Календарь списаний">
+  <img src="edit.png" width="200" alt="Выбор иконки">
 </p>
 
 ## Что умеет
